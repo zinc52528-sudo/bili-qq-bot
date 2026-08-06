@@ -1,9 +1,0 @@
-{
-  "subscriptionCheckInterval": 60,
-  "enabledGroups": ["1000"],
-  "groupConfigs": {
-    "1000": {
-      "isInGroup": true
-    }
-  }
-}

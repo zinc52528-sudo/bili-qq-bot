@@ -1,2 +1,0 @@
-"""Authentication and credential management."""
-
