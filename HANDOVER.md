@@ -15,7 +15,7 @@
 | 修改时间 | 2026-08-07（服务器 astrbot 容器于 16:59 重启生效） |
 | 负责人 | 小布（AI 运维助手） |
 | 复核人 | 用户（Wzj） |
-| 部署方式 | 直接改服务器宿主机插件文件（`/home/ubuntu/astrbot/data/plugins/` 与容器 `/AStrBot/data` 为 bind mount），`docker restart astrbot` 生效 |
+| 部署方式 | 直接改服务器宿主机插件文件（`/home/ubuntu/astrbot/data/plugins/` 与容器 `/AstrBot/data` 为 bind mount），`docker restart astrbot` 生效 |
 | 是否入 Git | 是 — 本次已随本提交推入 GitHub（见第 4 节） |
 
 ---
