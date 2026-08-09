@@ -21,7 +21,7 @@
     "description": "B 站登录态 cookies 文件路径",
     "type": "string",
     "hint": "默认复用 bilivideo 插件的 cookies",
-    "default": "/AStrBot/data/plugin_data/astrbot_plugin_bilivideo/bili_cookies.json"
+    "default": "/AstrBot/data/plugin_data/astrbot_plugin_bilivideo/bili_cookies.json"
   },
   "max_preview_chars": {
     "description": "单条消息正文上限（字符）。0 表示不限制，长动态会完整推送并自动分段（默认每段 3500 字）；>0 时作为单段上限",

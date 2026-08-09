@@ -633,7 +633,7 @@ class DynamicPushPlugin(Star):
 
     # ---------- 订阅管理（交互式，比改配置更直观） ----------
     CONFIG_PATH = Path(
-        "/AStrBot/data/config/astrbot_plugin_dynamic_push_config.json"
+        "/AstrBot/data/config/astrbot_plugin_dynamic_push_config.json"
     )
 
     @staticmethod
