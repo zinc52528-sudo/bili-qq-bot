@@ -74,6 +74,7 @@
   - `default` — type `aiocqhttp`（napcat/QQ），启用。
   - **无任何微信适配器**（企业微信 `wecom_ai_bot` 内置但未启用；个人微信需第三方插件，未装）。
 - **日志噪音（非本次范围）**：服务器启动偶报 `ModuleNotFoundError: data.plugins.astrbot_plugin_bilibiliobs`，源于此前把 `bilibiliobs` 改名 `.disabled` 后注册表仍引用。不影响日报功能，建议经 AstrBot WebUI 彻底卸载或清理 `plugins.json` 引用。
+  - （已于 2026-08-11 修复：目录移出插件目录，见第 7 节。）
 
 ---
 
@@ -82,6 +83,64 @@
 - `astrbot_plugin_dynamic_push`：B站动态/直播预约推送（v1.2.0 优化：长文完整推送、订阅指令 `/动态订阅`、视频动态去重交 bilivideo）。早于本次修改已推入本仓库。
 - `astrbot_plugin_bilivideo`：视频推送 + AI 总结 + 订阅（已覆盖全部 dynamic_push 的 UP）。
 - `astrbot_plugin_bilibili_livemonitor`：直播开播提醒。
+
+---
+
+## 7. 2026-08-11 批次：推送链路 / 插件 / 人格维护
+
+### 7.1 修改概览
+
+| 项 | 内容 |
+|---|---|
+| 修改主题 | bilivideo 推送平台前缀修复、视频总结超时放宽、直播推送带图+时长、bilibiliobs 载入失败清理、QQ 小程序卡片解析增强、如威人格更新、AstrBot WebUI 密码重置 |
+| 修改时间 | 2026-08-10 23:45 ~ 2026-08-11 00:30（服务器时间，期间多次 `docker restart astrbot` 生效） |
+| 负责人 | Codex（AI 运维助手） |
+| 复核人 | 用户（Wzj） |
+| 部署方式 | 直接改服务器宿主机插件文件（`/home/ubuntu/astrbot/data/plugins/` 与容器 `/AstrBot/data` 为 bind mount），`docker restart astrbot` 生效 |
+| 是否入 Git | 是 — 随本提交推入 GitHub |
+
+### 7.2 各问题根因与改动
+
+1. **bilivideo 视频推送静默失败（最重要）**
+   - 现象：AI 总结正常生成（音频/图片产物齐全），但 QQ 私聊与群始终收不到；48 小时日志内出现 42 次 `cannot find platform for session aiocqhttp:..., message not sent`。
+   - 根因：`astrbot_plugin_bilivideo` 推送目标平台前缀写死为 `aiocqhttp`，而 AstrBot 该适配器的实例 ID 是 `default`；`send_message` 静默失败且插件仍推进 `last_bvid`，导致不重试。
+   - 改动：`astrbot_plugin_bilivideo_config.json` 的 `message.platform_prefix` → `default`；`plugin_data/.../subscriptions.json` 的 `push_targets` 前缀同步改为 `default:`。
+2. **视频总结超时**
+   - 根因：AstrBot DeepSeek provider 请求超时仅 120s（比插件的 180s 还短），长视频转录总结易超时（实测一次 180s 超时）。
+   - 改动：`cmd_config.json` provider timeout 120→300；插件 `LLM_CHAT_TIMEOUT_SECONDS` 180→300；`general.processing_timeout` 300→420。
+3. **直播推送不带图**
+   - 根因：livemonitor 只取 `user_cover`（主播自定义封面），多数直播间为空。
+   - 改动：封面回退链 `user_cover → system_cover → keyframe → cover`。
+4. **直播结束推送缺时长**
+   - 改动：下播通知追加「本次直播时长 x时x分x秒」（基于 B 站 live_time 与下播时间差，取不到时回退检测时间）。
+5. **bilibiliobs 载入失败**
+   - 根因：`.disabled` 后缀目录仍被 AstrBot 按普通插件导入（`ModuleNotFoundError`）。
+   - 改动：目录移出插件目录至 `data/disabled_plugins_bak/`（未删除，可恢复）。
+6. **QQ 小程序卡片无法解析**
+   - 根因：B 站小程序卡片 JSON 通常**不含 URL**，只有标题（`prompt`）；且解析器此前拿的是组件 repr 而非原始 JSON，偶发 Share 段也未被处理。
+   - 改动：`message_router.py` 直接取 `Json.data` 序列化为干净 JSON；`auto_detect.py` 增加 raw payload URL 扫描、Share 段支持，并新增**标题搜索兜底**（识别为 B 站卡片且无链接时，用标题搜 B 站取首条）。
+7. **如威技能/人格更新**
+   - 改动：`skills/ruwei/SKILL.md` 与 personas 表同步更新：应激触发词表（张怡/恬豆→「几张/筹集/鸡」；嘉然/乃琳/ASOUL→「acg」/粗口；恨也迷人/恨子→仇视开团），并放开粗口（允许「去你妈的」等），保持群内玩笑式对线基调。仅群 1041495420 生效。
+8. **AstrBot WebUI 密码重置**
+   - 说明：原密码仅存哈希无法还原，已重置为强随机密码并单独告知用户；明文未入库、未入 Git，建议用户登录后自行修改。
+
+### 7.3 备份清单（服务器插件目录/配置内）
+
+- `astrbot_plugin_dynamic_push/main.py.bak-20260809`、`README.md.bak-20260809`、`_conf_schema.json.bak-20260809`
+- `astrbot_plugin_bilivideo/bilivideo/core/constants.py.bak-20260810`
+- `cmd_config.json.bak-20260810-timeout`、`astrbot_plugin_bilivideo_config.json.bak-20260810-timeout`
+- `astrbot_plugin_bilibili_livemonitor/main.py.bak-20260811`、`main.py.bak-20260811-duration`
+- `astrbot_plugin_bilivideo/bilivideo/handlers/auto_detect.py.bak-20260811*`、`parsing/message_router.py.bak-20260811*`、`parsing/url_extractor.py.bak-20260811`
+- `astrbot_plugin_bilivideo_config.json.bak-20260811-prefix`、`subscriptions.json.bak-20260811-prefix`
+- `data/skills/ruwei/SKILL.md.bak-20260811`
+
+### 7.4 待验证 / 后续
+
+- 下一个新视频 → 验证 bilivideo 推送真正到达 QQ（封面 + AI 总结）。
+- 下一个开播/下播 → 验证封面图与时长文案。
+- 转发 B 站小程序卡片 → 验证标题搜索兜底是否命中正确视频。
+- 知识库 `kb.db` 仍为空，未配置 embedding provider（待用户选定方案：Ollama 本地 / 硅基流动 API 等）。
+- 仓库名 `bili-qq-bot` 与内容（AstrBot 插件集）不符，改名待用户确认。
 
 ---
 
