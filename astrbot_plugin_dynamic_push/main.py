@@ -476,21 +476,27 @@ class DynamicPushPlugin(Star):
         lines.append(f"🔗 https://t.bilibili.com/{dyn['id']}")
         return "\n".join(lines)
 
-    async def _send(self, text: str, image_urls: Optional[list] = None) -> None:
-        await self._send_chain(text, image_urls)
+    async def _send(self, text: str, image_urls: Optional[list] = None) -> bool:
+        return await self._send_chain(text, image_urls)
 
     async def _send_chain(
         self,
         text: str,
         image_urls: Optional[list] = None,
         emoji_urls: Optional[list] = None,
-    ) -> None:
+    ) -> bool:
+        """推送一条动态到全部目标，返回是否全部发送成功。
+
+        只有全部目标都成功时返回 True；任一目标失败返回 False，
+        由调用方决定是否推进状态，从而让失败的目标在下轮重试。
+        """
         cap = self.max_preview if self.max_preview > 0 else MAX_MSG_CHARS
         # 长文本按上限分段，保证完整送达（不再截断为“…”）
         if len(text) <= cap:
             chunks = [text]
         else:
             chunks = [text[i : i + cap] for i in range(0, len(text), cap)]
+        all_ok = True
         for target in self.push_targets:
             try:
                 for idx, chunk in enumerate(chunks):
@@ -513,7 +519,9 @@ class DynamicPushPlugin(Star):
                     f"已发送推送 -> {target}（共 {len(chunks)} 段）"
                 )
             except Exception as exc:
+                all_ok = False
                 PLUGIN_LOGGER.warning(f"推送失败 -> {target}: {exc}")
+        return all_ok
 
     async def _resolve_emotes(
         self,
@@ -584,6 +592,7 @@ class DynamicPushPlugin(Star):
                 if dyn_id == last:
                     continue
                 text = self._format_push(name, latest)
+                sent = True
                 if text:
                     emoji_map = await self._resolve_emotes(
                         session, dyn_id, latest.get("emoji_codes") or []
@@ -593,11 +602,17 @@ class DynamicPushPlugin(Star):
                         for c in (latest.get("emoji_codes") or [])
                         if c in emoji_map
                     ]
-                    await self._send_chain(
+                    sent = await self._send_chain(
                         text, latest.get("image_urls"), emoji_urls
                     )
-                self.state.setdefault(mid, {})["last_dyn"] = dyn_id
-                PLUGIN_LOGGER.info(f"已推送 {name}({mid}) 新动态 {dyn_id}")
+                if sent:
+                    self.state.setdefault(mid, {})["last_dyn"] = dyn_id
+                    PLUGIN_LOGGER.info(f"已推送 {name}({mid}) 新动态 {dyn_id}")
+                else:
+                    PLUGIN_LOGGER.warning(
+                        f"{name}({mid}) 新动态 {dyn_id} 推送未全部成功，"
+                        "保留状态，下轮自动重试"
+                    )
             except Exception as exc:
                 PLUGIN_LOGGER.warning(f"检查 {name}({mid}) 动态失败: {exc}")
             await asyncio.sleep(1)

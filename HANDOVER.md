@@ -144,4 +144,67 @@
 
 ---
 
+## 8. 2026-08-22/23 批次：推送全面中断事故排查与修复
+
+### 8.1 事故概要
+
+| 项 | 内容 |
+|---|---|
+| 事故时间 | 2026-08-06 ~ 2026-08-22（推送多次/长期中断），2026-08-22 22:00 起彻底中断 |
+| 影响范围 | QQ 私聊 943867461 + 群 1041495420 的 bilivideo 视频推送、dynamic_push 动态推送、livemonitor 直播通知 |
+| 根因层级 | NapCat 数据目录丢失 → 发送链路多环节连锁故障（图片 ENOENT → 反向 WS 通道断开 → AI 欠费/风控叠加） |
+| 修复时间 | 2026-08-22 23:27 ~ 2026-08-23 00:09（含用户两次扫码登录） |
+| 负责人 | Codex（AI 运维助手） |
+| 复核人 | 用户（Wzj，已完成 DeepSeek 充值） |
+
+### 8.2 根因链（按时间线）
+
+1. **NapCat 数据目录丢失（最根本）**：NapCat 容器挂载源 `/home/ubuntu/bili-qq-bot/napcat/`（含 `qq/` 与 `config/`）随仓库目录消失而丢失。容器内 `/app/.config/QQ` 挂载为空，`/app/.config/QQ/NapCat/temp` 不存在。
+2. **8/06 ~ 8/14：带图推送 ENOENT**——NapCat 无法写图片临时文件，所有带图发送报 `ActionFailed retcode=1200: ENOENT ... /app/.config/QQ/NapCat/temp/<uuid>`，全日志累计 2362 次。
+3. **8/15 起：反向 WS 通道断开**——NapCat 的 onebot11 配置（含 `websocketClients` → AstrBot 反向 WS）随旧配置丢失，重启后 NapCat 重新生成**空网络配置**，不再连接 AstrBot 的 `0.0.0.0:6199`；AstrBot 发送报**空错误**（实为 aiocqhttp `ApiNotAvailable`，`str()` 为空）。8/15 起动态推送成功数归零，bilivideo 全部失败。
+4. **DeepSeek 余额不足**：8/12-13、8/21-22 返回 `402 Insufficient Balance`（8/22 一天 1302 次）→ 视频 AI 总结生成失败。
+5. **B 站 BCut ASR 风控**：8/20 起 `412 Precondition Failed`（8/22 达 283 次）→ 无字幕视频转写失败。
+6. **bilivideo 死循环重试**：发送失败不推进 `last_bvid` → 每 5 分钟重试同一批视频，且**每轮重新生成总结**，8/15 起每天 1500~3600 条失败日志，进一步放大 API 消耗与日志体积（json 日志涨到 266MB）。
+7. **dynamic_push 静默丢动态**：`_send_chain` 失败被吞掉，`last_dyn` 照常推进 → 失败的动态永不重试（8/15~8/22 期间动态全部静默丢失）。
+
+### 8.3 修复动作
+
+1. **重建 NapCat 数据目录**：`/home/ubuntu/bili-qq-bot/napcat/{qq,config}` 由 Docker 自动重建；重启后 NapCat 重新初始化（旧登录态无法恢复，需重新扫码）。
+2. **扫码登录 QQ 3906734056**：用户 2026-08-22 23:50 与 23:57 两次扫码完成登录（NapCat 重启后未能从新数据目录自动恢复会话）。
+3. **恢复 NapCat → AstrBot 反向 WS 通道**：
+   - `docker network connect astrbot-napcat napcat-bili`（两容器原本不在同一 docker 网络，DNS 解析不到 `astrbot`）。
+   - 改写 `onebot11_3906734056.json` 的 `network.websocketClients`：
+     ```json
+     {"name":"astrbot","enable":true,"url":"ws://astrbot:6199/ws",
+      "messagePostFormat":"array","reportSelfMessage":false,
+      "reconnectInterval":5000,"token":"wzj943867461","debug":false,"heartInterval":30000}
+     ```
+   - 重启 napcat 生效；AstrBot 日志恢复 `aiocqhttp(OneBot v11) 适配器已连接。`
+4. **dynamic_push 修复**（`astrbot_plugin_dynamic_push/main.py`，已随本批次入 Git）：
+   - `_send_chain` 改为返回 `bool`（全部目标成功才 True）。
+   - 发送未全部成功时**不推进 `last_dyn`**，下轮自动重试，不再静默丢动态。
+5. **bilivideo 修复**（`bilivideo/handlers/scheduled_push.py`，第三方插件，补丁留存 `docs/patches/`）：
+   - 发送失败退避：同一视频 5 → 10 → 20 → 30 分钟封顶重试，不再每 5 分钟死循环。
+   - 缓存已生成推送内容（TTL 2h），重试时**不再重复调用 DeepSeek/BCut**。
+6. **验证 DeepSeek 充值生效**：日志恢复 `POST https://api.deepseek.com/v1/chat/completions "HTTP/1.1 200 OK"`，402 消失。
+
+### 8.4 验证结果（全绿）
+
+- AstrBot 重新收到 QQ 群消息（aiocqhttp 事件通道恢复）。
+- 00:01 起 NapCat 日志确认：`发送 -> 私聊 (943867461)` 与 `发送 -> 群聊 [推送测试(1041495420)]` 均成功，**带图片**（鸣潮/星瞳/北华念/LPL 等）。
+- 订阅 `subscriptions.json` 的 `last_bvid` 正常推进（仅发送成功才更新）。
+- 12 分钟窗口内 0 条 `push ... failed` / `not marked as pushed`。
+- dynamic_push、daily_report、bilivideo、livemonitor 插件均正常加载。
+
+### 8.5 注意事项 / 遗留
+
+- **8/15~8/22 期间静默丢失的动态无法补推**（旧 bug 已推进状态）；8/23 起新动态/新视频恢复正常推送。
+- **NapCat WebUI token 已变化**：旧 `930cea95364e` 失效，新 token `c4ea12c42549`（`/home/ubuntu/bili-qq-bot/napcat/config/webui.json`）。WebUI：`http://119.91.249.160:6098/webui?token=c4ea12c42549`。
+- NapCat 重启后若不出二维码，可检查 `napcat_3906734056.json` 的快速登录项（本次新装后需手动扫码）。
+- 建议：SSH 密码、NapCat WS token、AstrBot ws_reverse_token 目前均为 `wzj943867461`，仍建议尽快更换并同步三处。
+- 备份文件：`onebot11_3906734056.json.bak-20260822-empty`；插件 `.bak-20260822`。
+- bilivideo 补丁在 `docs/patches/2026-08-23_bilivideo_scheduled_push_backoff.py`，服务器对应文件带 `.bak-20260822` 原版。
+
+---
+
 *生成方式：由 AI 运维助手根据服务器实际改动与日志整理，经用户复核。*
