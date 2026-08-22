@@ -201,9 +201,24 @@
 - **8/15~8/22 期间静默丢失的动态无法补推**（旧 bug 已推进状态）；8/23 起新动态/新视频恢复正常推送。
 - **NapCat WebUI token 已变化**：旧 `930cea95364e` 失效，新 token `c4ea12c42549`（`/home/ubuntu/bili-qq-bot/napcat/config/webui.json`）。WebUI：`http://119.91.249.160:6098/webui?token=c4ea12c42549`。
 - NapCat 重启后若不出二维码，可检查 `napcat_3906734056.json` 的快速登录项（本次新装后需手动扫码）。
-- 建议：SSH 密码、NapCat WS token、AstrBot ws_reverse_token 目前均为 `wzj943867461`，仍建议尽快更换并同步三处。
+- **凭据已于 2026-08-23 轮换**：SSH 密码、NapCat WS token、AstrBot ws_reverse_token 已统一替换为强随机值（旧值 `wzj943867461` 已失效）。新值仅存本地 `C:\Users\w\Documents\Codex\2026-08-04\wo\work\server_secrets.md`（不入库），详见第 8.6 节。
 - 备份文件：`onebot11_3906734056.json.bak-20260822-empty`；插件 `.bak-20260822`。
 - bilivideo 补丁在 `docs/patches/2026-08-23_bilivideo_scheduled_push_backoff.py`，服务器对应文件带 `.bak-20260822` 原版。
+
+## 8.6 凭据轮换（2026-08-23）
+
+| 项 | 状态 |
+|---|---|
+| SSH 密码（ubuntu） | ✅ 已轮换为强随机密码，`askpass.cmd` 同步更新 |
+| NapCat WS token（websocketClients） | ✅ 已轮换（onebot11_3906734056.json + AstrBot cmd_config.json 同步） |
+| AstrBot `ws_reverse_token` | ✅ 已轮换 |
+| 轮换后验证 | ✅ SSH 新密码登录通过；WS 通道用新 token 重新握手成功（`适配器已连接` + 6199 ESTABLISHED） |
+| NapCat WebUI token | 未轮换，仍为 `c4ea12c42549` |
+| NapCat 自动登录 | 已设 `autoLoginAccount=3906734056`（下次重启生效；若仍出二维码需再扫一次） |
+
+**新凭据存放**：`C:\Users\w\Documents\Codex\2026-08-04\wo\work\server_secrets.md`（本地私有，未入 Git/GitHub；服务器配置备份 `*.bak-20260823-token`）。
+
+> 注意：旧值 `wzj943867461` 仍存在于 Git 历史与本文件早期版本，若仓库公开需知悉；线上已全部失效。
 
 ---
 
