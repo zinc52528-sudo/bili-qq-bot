@@ -1,0 +1,349 @@
+{
+  "id": "bili-browse",
+  "name": "自己刷B站",
+  "version": "1.4.1-local",
+  "apiVersion": 1,
+  "category": "media",
+  "description": "按机器人全局人设自主选搜索话题、浏览候选并筛选感兴趣的视频，定时私聊反馈。字幕可读时优先字幕；只能读到标题简介时明确说明。支持每日上限、去重、412冷却。保留按需看视频工具。",
+  "author": "本机定制",
+  "entry": "index.js",
+  "permissions": [
+    "web_fetch"
+  ],
+  "enabledByDefault": true,
+  "capabilities": [
+    "bili.account.login"
+  ],
+  "requires": [],
+  "settings": {
+    "enabled": true,
+    "browseEnabled": true,
+    "source": "keyword",
+    "keywords": "小鲸鱼,美食,猫,科技数码,搞笑",
+    "minDurationSec": 30,
+    "maxDurationSec": 900,
+    "minViewCount": 0,
+    "maxViewCount": 0,
+    "minLikeCount": 0,
+    "maxLikeCount": 0,
+    "maxAgeDays": 0,
+    "minAgeDays": 0,
+    "filterFallback": true,
+    "perPage": 20,
+    "checkIntervalMin": 45,
+    "catchUpOnStart": true,
+    "injectOnProactive": true,
+    "shareChatKey": "",
+    "maxSharesPerDay": 6,
+    "minMinutesBetweenShares": 60,
+    "quietHours": "1,2,3,4,5,6,7",
+    "triggerKeywords": "",
+    "triggerSendEnabled": true,
+    "triggerCooldownMin": 20,
+    "triggerMaxPerDay": 10,
+    "atOnly": false,
+    "autoReview": true,
+    "commentCount": 5,
+    "sheetCount": 1,
+    "sheetWidth": 0,
+    "imageMode": "url",
+    "maxInjectChars": 1100,
+    "seenKeep": 200,
+    "allowComment": false,
+    "bilibiliSessdata": "",
+    "bilibiliJct": "",
+    "peakBrowseEnabled": false,
+    "offPeakBrowseEnabled": true,
+    "peakIntervalMin": 240,
+    "offPeakIntervalMin": 90,
+    "peakDailyRounds": 1,
+    "offPeakDailyRounds": 6,
+    "peakWindows": "09:00-12:00,14:00-18:00",
+    "offPeakDates": "",
+    "autonomousEnabled": false,
+    "feedbackQQ": "",
+    "candidateCount": 5,
+    "recommendCount": 3,
+    "dailyRounds": 6,
+    "riskCooldownMin": 180
+  },
+  "configSchema": {
+    "peakBrowseEnabled": {
+      "type": "boolean",
+      "label": "高峰时段允许刷视频",
+      "description": "默认关闭：工作日09:00–12:00、14:00–18:00不发起自主浏览模型调用。"
+    },
+    "peakIntervalMin": {
+      "type": "number",
+      "label": "高峰浏览间隔（分钟）",
+      "min": 30,
+      "max": 1440
+    },
+    "peakDailyRounds": {
+      "type": "number",
+      "label": "高峰每天最多几轮",
+      "min": 0,
+      "max": 12,
+      "description": "高峰开关打开时才生效，0表示不刷。"
+    },
+    "offPeakBrowseEnabled": {
+      "type": "boolean",
+      "label": "低峰时段允许刷视频"
+    },
+    "offPeakIntervalMin": {
+      "type": "number",
+      "label": "低峰浏览间隔（分钟）",
+      "min": 30,
+      "max": 1440
+    },
+    "offPeakDailyRounds": {
+      "type": "number",
+      "label": "低峰每天最多几轮",
+      "min": 0,
+      "max": 12,
+      "description": "独立额度，同时受每日总轮数、静默和风控冷却限制。"
+    },
+    "peakWindows": {
+      "type": "string",
+      "label": "高峰时间段（北京时间）",
+      "description": "格式09:00-12:00,14:00-18:00；仅周一至周五，周末全天低峰。格式错误时停止自主浏览。"
+    },
+    "offPeakDates": {
+      "type": "string",
+      "label": "额外全天低峰日期",
+      "multiline": true,
+      "description": "逗号分隔YYYY-MM-DD；已内置2026年中国放假日期，未来年份需补充。周末调休上班仍按周末低峰。"
+    },
+    "autonomousEnabled": {
+      "type": "boolean",
+      "label": "按人设自主筛选并私聊反馈",
+      "description": "开启后按机器人全局人设选题，不使用接收者聊天偏好；原触发词分享和群内冷场注入暂停，避免重复。"
+    },
+    "feedbackQQ": {
+      "type": "string",
+      "label": "自主浏览反馈给哪个 QQ",
+      "description": "只接收纯数字 QQ 号，反馈仅私聊。"
+    },
+    "candidateCount": {
+      "type": "number",
+      "label": "每轮最多浏览候选数",
+      "min": 1,
+      "max": 8
+    },
+    "recommendCount": {
+      "type": "number",
+      "label": "每轮最多推荐数",
+      "min": 1,
+      "max": 3,
+      "description": "允许零条，没有兴趣不硬凑。"
+    },
+    "dailyRounds": {
+      "type": "number",
+      "label": "每天最多浏览轮数",
+      "min": 1,
+      "max": 12,
+      "description": "按北京时间计数，失败也计入预算，避免反复消耗。"
+    },
+    "riskCooldownMin": {
+      "type": "number",
+      "label": "412/403 冷却分钟",
+      "min": 30,
+      "max": 1440,
+      "description": "拒绝请求后停止进一步请求，保存冷却时间，不立即反复重试。已有搜索资料可如实作为标题简介推荐。"
+    },
+    "enabled": {
+      "type": "boolean",
+      "label": "启用本插件",
+      "description": "总开关。关掉后后台不再挑视频、也不再往提示词里注入，工具同时失效（不会出现「界面关了但还在偷偷跑」）。"
+    },
+    "browseEnabled": {
+      "type": "boolean",
+      "label": "空闲时自己去刷",
+      "description": "后台浏览总开关。自主模式会调用模型选题和筛选，会消耗 Token；关掉后仍可按需调用看视频工具。"
+    },
+    "source": {
+      "type": "string",
+      "label": "从哪挑视频",
+      "description": "keyword = 按下面的关键词搜；popular = 直接看 B站综合热门。"
+    },
+    "keywords": {
+      "type": "string",
+      "label": "搜索关键词（逗号分隔）",
+      "description": "只在旧模式使用；按人设自主模式忽略此项，由机器人自己选题。",
+      "multiline": true
+    },
+    "minDurationSec": {
+      "type": "number",
+      "label": "最短时长（秒）",
+      "description": "太短的（十几秒的）没什么内容可说，默认跳过 30 秒以下的。"
+    },
+    "maxDurationSec": {
+      "type": "number",
+      "label": "最长时长（秒）",
+      "description": "默认 900（15 分钟）。太长的视频逐帧拼图会很多张，也没必要。"
+    },
+    "minViewCount": {
+      "type": "number",
+      "label": "最低播放量（0=不限）",
+      "description": "低于这个播放量的不要。留 0 = 不限。想让机器人只看有点热度的视频就填个几万。接口没给播放量时不会因此被排除（否则会出现「一直挑不出视频」）。"
+    },
+    "maxViewCount": {
+      "type": "number",
+      "label": "最高播放量（0=不限）",
+      "description": "高于这个播放量的不要。留 0 = 不限。用来避开大爆款、专挑小up的冷门视频时有用。"
+    },
+    "minLikeCount": {
+      "type": "number",
+      "label": "最低点赞数（0=不限）",
+      "description": "低于这个点赞数的不要。留 0 = 不限。点赞比播放更能反映「看完觉得好」，想提高内容质量可以设成几百。"
+    },
+    "maxLikeCount": {
+      "type": "number",
+      "label": "最高点赞数（0=不限）",
+      "description": "高于这个点赞数的不要。留 0 = 不限。"
+    },
+    "maxAgeDays": {
+      "type": "number",
+      "label": "只看最近多少天内发布的（0=不限）",
+      "description": "例如填 7 = 只要最近一周的。填了它之后搜索会改成按发布时间倒序（否则默认的相关度排序里会混进几年前的视频，筛完就没什么可选了）。留 0 = 不限。"
+    },
+    "minAgeDays": {
+      "type": "number",
+      "label": "只要多少天以前发布的（0=不限）",
+      "description": "下限。一般留 0；想避开「刚发的还没什么人看」时可以配合上限一起用。"
+    },
+    "filterFallback": {
+      "type": "boolean",
+      "label": "筛空时自动放宽一次",
+      "description": "筛选条件之间可能互相冲突（比如「最近 1 天」+「播放 1 万以上」在 B站 几乎无解 —— 刚发的视频不可能有 1 万播放）。打开这个开关后，真筛空时会自动放宽一次（优先放宽时间窗，其次把播放/点赞下限砍半），并在日志里写明放宽了什么。关掉则严格按你的条件，挑不出就是不挑。"
+    },
+    "perPage": {
+      "type": "number",
+      "label": "每次候选多少个",
+      "description": "搜/取热门时拿多少个候选，然后从中随机挑一个。默认 20。"
+    },
+    "checkIntervalMin": {
+      "type": "number",
+      "label": "多久挑一次（分钟）",
+      "description": "自主模式每轮间隔，最低30分钟；每分钟检查最新设置是否到期。建议120分钟。"
+    },
+    "catchUpOnStart": {
+      "type": "boolean",
+      "label": "启动时先备一个",
+      "description": "开机后立刻挑一个视频备好，不用等第一个间隔。"
+    },
+    "injectOnProactive": {
+      "type": "boolean",
+      "label": "主动机会时递给它",
+      "description": "机器人因为冷场被主动唤醒时，把备好的视频（含画面）塞进提示词，让它有机会分享。关掉则只有你问的时候它才看。"
+    },
+    "shareChatKey": {
+      "type": "string",
+      "label": "固定分享到哪个会话（可留空）",
+      "description": "留空 = 就在触发主动机会的那个群里说。填了就固定往那里分享，形如 group:123456。"
+    },
+    "maxSharesPerDay": {
+      "type": "number",
+      "label": "每天最多分享几次",
+      "description": "防刷屏的硬上限，默认 6 次。按北京时间算，隔天自动重置。"
+    },
+    "minMinutesBetweenShares": {
+      "type": "number",
+      "label": "两次分享至少隔多久（分钟）",
+      "description": "默认 60 分钟。即使有视频备着，间隔没到也不会递过去 —— 免得像刷屏机器人。"
+    },
+    "quietHours": {
+      "type": "string",
+      "label": "静默时段（小时，逗号分隔）",
+      "description": "这些小时内不主动分享，默认 1~7 点（半夜别吵人）。留空 = 全天都可以。注意：这只管「冷场时自己分享」，不管触发词 —— 有人叫它发的时候半夜也会发。"
+    },
+    "triggerKeywords": {
+      "type": "string",
+      "label": "触发词（逗号分隔，提到就发视频）",
+      "description": "群里有人说到这些词时，机器人会**主动**去挑一个视频发出来（不是等冷场）。例如填「来个视频,看看这个,B站」。留空 = 关掉这个功能。机器人自己的发言不会触发（防自激循环）。",
+      "multiline": true
+    },
+    "triggerSendEnabled": {
+      "type": "boolean",
+      "label": "启用触发词主动发视频",
+      "description": "关掉后上面的触发词不生效。与「主动机会时递给它」是两条独立通路：那个是冷场时把视频塞进提示词、说不说由模型定；这个是命中就确定性地发出去。"
+    },
+    "triggerCooldownMin": {
+      "type": "number",
+      "label": "两次触发发送至少隔多久（分钟）",
+      "description": "默认 20 分钟。群里反复刷同一个词时不会被连着触发好几次。"
+    },
+    "triggerMaxPerDay": {
+      "type": "number",
+      "label": "每天最多被触发几次",
+      "description": "默认 10 次。按北京时间算。与「每天最多分享几次」是**两份独立的额度** —— 冷场分享用光了不会影响你叫它发。"
+    },
+    "atOnly": {
+      "type": "boolean",
+      "label": "仅 @ 时才发视频",
+      "description": "打开后：只有被 @ 到时才会发视频（触发词也必须带着 @ 才算），同时关掉冷场自动分享。适合「不想让它没事自己往外掏视频」的场景。"
+    },
+    "autoReview": {
+      "type": "boolean",
+      "label": "发完视频自动补一句锐评",
+      "description": "视频发出去之后，让它自己再补一两句看法（会多调一次模型）。关掉就只发链接。锐评生成失败不影响视频已经发出这件事。"
+    },
+    "commentCount": {
+      "type": "number",
+      "label": "带几条热门评论",
+      "description": "默认 5 条。评论是理解「大家在聊什么」最省 token 的来源。填 0 = 不带。"
+    },
+    "sheetCount": {
+      "type": "number",
+      "label": "给几张画面拼图",
+      "description": "每张拼图是 10x10=100 帧，横跨整个视频。默认 1 张（够看出在讲什么，约 1000 token）。长视频想看得更全可以加到 2~3。"
+    },
+    "sheetWidth": {
+      "type": "number",
+      "label": "拼图宽度（0=原图）",
+      "description": "0 = 用 B站 原图（4800x2700，每格 480x270，最清楚）。填 1920 之类会让 CDN 先缩图、省流量但格子变模糊。以 URL 形式喂给模型时原图不占请求预算，所以默认 0。"
+    },
+    "imageMode": {
+      "type": "string",
+      "label": "画面怎么交给模型",
+      "description": "url = 直接把 B站 CDN 的图片地址给模型（最省，实测可用）；base64 = 本机抓下来内联（网关不支持外链图片时用，会自动压缩）；off = 不给画面，只给文字。"
+    },
+    "maxInjectChars": {
+      "type": "number",
+      "label": "注入文字上限（字符）",
+      "description": "标题+简介+评论合计最多多少字，默认 1100。这段每轮命中都会进上下文，调大等于多花 token。"
+    },
+    "seenKeep": {
+      "type": "number",
+      "label": "记住多少个看过的",
+      "description": "避免重复分享同一个视频，默认记 200 个。"
+    },
+    "allowComment": {
+      "type": "boolean",
+      "label": "允许在 B站 下发评论（谨慎）",
+      "description": "开启后可用B站账号发真实评论。优先复用本插件扫码登录态，不用再手填Cookie；关闭时禁止发表评论。"
+    },
+    "bilibiliSessdata": {
+      "type": "string",
+      "label": "B站 SESSDATA",
+      "description": "可选旧方式：手填登录态。已扫码登录时无需填写，优先使用扫码保存的登录态。不要在聊天中发送。",
+      "secret": true
+    },
+    "bilibiliJct": {
+      "type": "string",
+      "label": "B站 bili_jct",
+      "description": "可选旧方式：与手填SESSDATA配套的CSRF令牌。扫码登录会自动保存，无需手填。",
+      "secret": true
+    }
+  },
+  "prompt": {
+    "sections": [
+      {
+        "id": "bili-browse-note",
+        "title": "刷视频",
+        "priority": 46,
+        "content": "你有 bili-browse__bili_watch 工具：给一个 B站 链接或 BV 号，就能看到这个视频的标题、简介、播放数据、热门评论，以及 B站 自己抽好的逐帧画面（10x10 拼图，按时间顺序从左到右、从上到下）。别人在群里丢 B站 链接、问「这视频讲了啥」时用它。\n注意：你看到的是一张张**截图**，不是连续视频 —— 帧与帧之间的过程你看不到，描述时用「看着像」「有一帧」这类措辞，不要断言中间的连续剧情。你也**听不到声音**：不要描述背景音乐、歌词、说话语气或任何听觉内容，那不在你看到的东西里。画面里的小字常常糊到看不清，看不清就说看不清，别猜。画面只是辅助：真正判断内容以标题/简介/评论为主，别对着几张截图编故事。"
+      }
+    ]
+  }
+}

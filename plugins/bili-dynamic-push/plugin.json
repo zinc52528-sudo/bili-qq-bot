@@ -1,0 +1,79 @@
+{
+  "id": "bili-dynamic-push",
+  "name": "B站动态推送",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "category": "message",
+  "description": "定时盯着指定的 B 站 UP 主：一有新动态、以及开播/下播，就自动发到指定群/私聊（不经过模型、不花 token）。两种用法：①在「插件」页的齿轮里填 UP 主 + 群号；②直接在群里对机器人说「订阅某某的动态」，它会记住当前会话并自动推送。",
+  "author": "本地自建",
+  "enabledByDefault": true,
+  "capabilities": ["bili.dynamic-latest", "bili.dynamic-subscribe"],
+  "settings": {
+    "up": "",
+    "targets": "",
+    "biliCookie": "",
+    "pushLiveOn": true,
+    "pushLiveOff": true,
+    "intervalMin": 10,
+    "maxPerCheck": 3,
+    "firstRunPush": true
+  },
+  "configSchema": {
+    "up": {
+      "type": "string",
+      "label": "要盯的 UP 主",
+      "description": "填 uid（数字，最准）或名字（如「伊莫可Imoko」，会用 B 站搜索解析成 uid）。留空也可以：那就只推「群内订阅」的那些 UP。"
+    },
+    "targets": {
+      "type": "string",
+      "label": "推送到哪些群/私聊",
+      "description": "直接填群号即可（如 123456），多个用逗号或换行分隔；私聊写 private:QQ号。群号可以在控制台左侧的会话列表里看到。留空则不推（除非用群内订阅）。",
+      "multiline": true
+    },
+    "biliCookie": {
+      "type": "string",
+      "label": "B 站登录信息（可选，一般不用填）",
+      "description": "只有抓不到「官方号 / 企业号」的动态时才需要：在浏览器登录 B 站后按 F12，在 Application（应用）→ Cookies → bilibili.com 里找到 SESSDATA，把它的值填到这里（只填值即可，形如 1a2b3c...%2C...）。★ 这是你的登录凭证，请只填在本机这个框里；留空 = 完全匿名（普通 UP 主不需要填）。",
+      "secret": true
+    },
+    "pushLiveOn": {
+      "type": "boolean",
+      "label": "开播提醒",
+      "description": "默认开。TA 开播时推一条（带直播间标题和链接）。用的是直播间接口，和动态检查互不影响；提醒的最长延迟等于上面的检查间隔。"
+    },
+    "pushLiveOff": {
+      "type": "boolean",
+      "label": "下播提醒",
+      "description": "默认开。直播结束时推一条「【B站下播】…」。觉得啰嗦可以单独关掉它 —— 开播提醒不受影响，两者的状态记录也照常。"
+    },
+    "intervalMin": {
+      "type": "number",
+      "label": "检查间隔（分钟）",
+      "description": "默认 10，最小 5。B 站接口查太勤会被限流，不建议低于 5 分钟。",
+      "min": 5,
+      "max": 1440
+    },
+    "maxPerCheck": {
+      "type": "number",
+      "label": "每次最多推几条",
+      "description": "默认 3。隔很久没开、一次积压很多动态时，防止一口气刷屏。",
+      "min": 1,
+      "max": 10
+    },
+    "firstRunPush": {
+      "type": "boolean",
+      "label": "首次先把最新一条推出来",
+      "description": "默认开。刚填完设置时先推 TA 当前最新的一条，用来确认推送链路是通的；之后只推新增的。"
+    }
+  },
+  "prompt": {
+    "sections": [
+      {
+        "id": "bili-dynamic-push-note",
+        "title": "B站动态订阅",
+        "priority": 40,
+        "content": "有人说「订阅/关注/盯着某个 B 站 UP 主的动态」「别推了/取关」时，调用 bili_dynamic_sub 工具（订阅记录存在程序里，不要自己记名单，也不要答应了你却什么都不做）；想立刻看某人最近发了什么，用 bili_dynamic_now。这两个工具会把结果直接发进会话，你不需要再复述一遍。"
+      }
+    ]
+  }
+}

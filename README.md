@@ -1,31 +1,43 @@
-# AstrBot B 站推送插件集
+# QQ Agent · Linux 服务器定制版
 
-运行在 [AstrBot](https://github.com/AstrBotDevs/AstrBot) 上的 B 站动态 / 日报推送插件集合，通过 NapCat（OneBot）向 QQ 私聊与群聊推送关注 UP 的最新动态、直播预约和每日早报。
+本仓库保存 QQ Agent 的服务器部署源码及本地扩展，替换此前的 AstrBot B 站插件集合。旧项目保留在备份分支 backup/pre-qq-agent-20261109。
 
-> 说明：本仓库原为「Bili QQ Bot」机器人项目，QQ 机器人主体代码已移除；当前仅保留 AstrBot 自定义插件与运维文档。
+基于 [K0nd1us/QQ-agent](https://github.com/K0nd1us/QQ-agent) 的 0.4.0 源码快照扩展，保留原作者 Kondius 的 MIT 许可证和各扩展署名。此快照导出于 2026-11-09；不是最新上游 OmniAgent 的兼容承诺。
 
-## 插件列表
+## 已包含
 
-| 插件 | 版本 | 功能 |
-|---|---|---|
-| [astrbot_plugin_dynamic_push](astrbot_plugin_dynamic_push/README.md) | v1.2.0 | B 站非视频动态推送（文字/图文/转发/专栏）+ 直播预约/开播预告；聊天内订阅管理指令；长动态自动分段完整送达 |
-| [astrbot_plugin_daily_report](astrbot_plugin_daily_report/README.md) | v1.1.0 | 每日 08:00 早报：天气、今日安排、赛事、新视频、直播预约、新动态；支持钉钉会话记忆推送 |
+- Linux 后台入口、网页控制台及登录保护。
+- 日记记忆 2.0、设置中的日记浏览、分层会话记忆和短期记事本。
+- 群聊/私聊独立周期上下文交接（配置后启用；保留原聊天存档）。
+- 记忆导出、导入预览、恢复前备份及同名文件恢复。
+- B 站自主浏览、扫码登录、峰谷调度、动态订阅、分享卡片解读。
+- 主人识别、主动私信、好感度、表情技能、Token 节流及保守提前收尾。
 
-部署环境中还启用了 `astrbot_plugin_bilivideo`（视频动态 + AI 总结）、`astrbot_plugin_bilibili_livemonitor`（直播开播提醒）等插件，源码见各插件官方仓库。
+源码与数据分离：仓库不含真实聊天、日记、画像、个人角色卡、API Key、B站Cookie、QQ登录态或服务令牌。它是源码包，不是已登录的完整服务器镜像。
 
-## 快速开始
+## Linux 启动
 
-1. 将需要的插件目录复制到 AstrBot 插件目录（通常为 `data/plugins/`）
-2. 在 `data/config/` 下按需修改插件配置（见各插件 README）
-3. 重启 AstrBot 使插件生效
+需要 Node.js 20+，建议使用已部署验证过的 Node 版本。QQ 协议端需另外安装并登录，配置兼容的 OneBot 接口；本仓库不分发 QQ / SnowLuma 运行时。Windows 桌面功能仍保留在上游源码中，但本次导出仅核验服务器路径。
 
-前置条件：AstrBot v4.x、已配置 NapCat / OneBot 适配器、`astrbot_plugin_bilivideo`（复用 B 站登录态）。
+```bash
+npm ci --omit=dev --ignore-scripts
+export QQ_AGENT_DATA_DIR=/var/lib/qq-agent
+mkdir -p "$QQ_AGENT_DATA_DIR"
+npm run server:linux
+```
 
-## 维护文档
+注意：服务只监听本机 127.0.0.1，默认端口 3210。远程访问使用 SSH 转发；不要直接公开缺少额外访问控制的端口。首次启动后通过管理页设置模型、OneBot、主人及消息目标，凭据只保存在自己的数据目录。
 
-- [HANDOVER.md](HANDOVER.md) — 运维修改日志
+实际部署可以将数据目录放在源码旁的 data/，但必须使用 QQ_AGENT_DATA_DIR 显式指向它，升级源码时不要覆盖。原有生产配置没有随本仓库上传，因此部署者需重新设置或从自己的私有备份恢复。
 
-## 安全提示
+## 文档
 
-- `data/config/*.json` 包含 API 密钥、会话 ID 等敏感信息，请勿提交到仓库
-- 各插件使用 WBI 签名 + 登录态 cookies 访问 B 站接口，注意轮询频率以免触发风控
+- [Linux 部署与恢复](docs/LINUX-DEPLOYMENT.md)
+- [上游原始 README](docs/UPSTREAM-README.md)
+- 扩展开发规范：doc/extend_development/。
+
+导入记忆会替换包内同名数据文件，不会逐条合并聊天；先检查预览和备份。自动重启目前针对 Linux systemd 用户服务 qq-agent-original.service，改用其它服务名需同步适配 src/routes.js。
+
+## 验证范围
+
+本次导出检查文件清单、敏感配置排除、JavaScript 语法及隔离核心测试；没有向真实 QQ 发送测试消息。不承诺全部第三方扩展在全新机器零配置即运行，也不承诺 Token 固定减半。

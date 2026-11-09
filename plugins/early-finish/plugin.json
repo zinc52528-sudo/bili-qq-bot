@@ -1,0 +1,31 @@
+{
+  "id": "early-finish",
+  "name": "token 直接减半",
+  "version": "1.2.1-local",
+  "apiVersion": 1,
+  "category": "utility",
+  "description": "保守提前收尾：仅本批纯文字全部成功、无后续动作线索时省去结束轮。查询、提醒、日记及其它操作批次保留正常循环，不保证Token减半。",
+  "author": "小肥鱼",
+  "entry": "index.js",
+  "enabledByDefault": true,
+  "capabilities": [
+    "reply.local-policy"
+  ],
+  "requires": [],
+  "settings": {
+    "enabled": true,
+    "dryRun": false
+  },
+  "configSchema": {
+    "enabled": {
+      "type": "boolean",
+      "label": "启用提前收尾",
+      "description": "开启保守判定；关闭后由模型正常结束。本插件不删除存档、不修改人设。"
+    },
+    "dryRun": {
+      "type": "boolean",
+      "label": "试运行（只记录、不真的收尾）",
+      "description": "仅记录本来可以提前结束的纯文字批次，继续正常流程。"
+    }
+  }
+}
